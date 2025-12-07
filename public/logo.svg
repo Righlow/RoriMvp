@@ -1,0 +1,10 @@
+<svg id="soniqLogo" width="90" height="90" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Outer Circle -->
+    <circle cx="50" cy="50" r="45" stroke="white" stroke-width="8" fill="none"></circle>
+
+    <!-- Inner shapes -->
+    <path d="M35 30 C20 50, 20 50, 35 70 
+             C45 85, 55 85, 65 70 
+             C80 50, 80 50, 65 30 
+             C55 15, 45 15, 35 30Z" fill="white"></path>
+</svg>
