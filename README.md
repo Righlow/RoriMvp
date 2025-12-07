@@ -12,6 +12,7 @@ FEATURES
 6.Secure login system (JWT)
 
 TECHNOLOGY STACK (front-end)
+
 -React
 -React Three Fiber + Three.js
 -Bootstrap (UI layout)
@@ -23,6 +24,7 @@ TECHNOLOGY STACK (front-end)
 -JWT Authentication
 
 ARCHITECTURE FLOW
+
 1.React + R3F (3D visuals)
       
 3.Express API (auth, uploads, room data)
