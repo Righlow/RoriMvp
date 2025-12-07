@@ -66,54 +66,55 @@ Fullscreen interactive 3D room
 
 Scroll-to-view gallery for saved rooms
 
+
 MVP FEATURES
 
-User login/register
+-User login/register
 
-Audio upload + storage
+-Audio upload + storage
 
-Audio-reactive 3D environment
+-Audio-reactive 3D environment
 
-Basic customisation (colour, shape, particles, branding)
+-Basic customisation (colour, shape, particles, branding)
 
-Save/load room settings
+-Save/load room settings
 
-Loop and shuffle audio
+-Loop and shuffle audio
 
 
 CHALLENGES
 
-Large GLB models caused loading issues
+-Large GLB models caused loading issues
 
-Need to optimise 3D visuals for performance
+-Need to optimise 3D visuals for performance
 
-Audio files are large — store paths, not raw files, in MongoDB
+-Audio files are large — store paths, not raw files, in MongoDB
 
-Syncing audio data smoothly with 3D visuals
+-Syncing audio data smoothly with 3D visuals
 
 
 EXPERIMENTS
 
-Tested Web Audio API for frequency and amplitude analysis
+-Tested Web Audio API for frequency and amplitude analysis
 
-Loaded GLB models from Blender (learned file-size limits)
+-Loaded GLB models from Blender (learned file-size limits)
 
-Tried 2D animated textures
+-Tried 2D animated textures
 
-Built early Express routes for uploads + room saving
+-Built early Express routes for uploads + room saving
 
-UI experiments with custom CSS before switching to Bootstrap
+-UI experiments with custom CSS before switching to Bootstrap
 
 
 LEARNING POINTS
 
-Separating frontend and backend improves workflow and prevents crashes
+-Separating frontend and backend improves workflow and prevents crashes
 
-Three.js scenes must stay lightweight
+-Three.js scenes must stay lightweight
 
-Bootstrap speeds up reliable UI building
+-Bootstrap speeds up reliable UI building
 
-Audio storage requires careful planning
+-Audio storage requires careful planning
 
-Mapping audio data to visuals requires experimentation
+-Mapping audio data to visuals requires experimentation
 
