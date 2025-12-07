@@ -40,17 +40,16 @@ JWT Authentication
 
 ARCHITECTURE FLOW
 
-React + R3F (3D visuals)
+1.React + R3F (3D visuals)
 
-      ↓
+
       
-Express API (auth, uploads, room data)
+2.Express API (auth, uploads, room data)
 
-      ↓
+
       
-MongoDB (users, audio files, room settings)
+3.MongoDB (users, audio files, room settings)
 
-      ↓
       
 Local/Cloud Storage (audio + logos)
 
@@ -81,6 +80,7 @@ Save/load room settings
 
 Loop and shuffle audio
 
+
 CHALLENGES
 
 Large GLB models caused loading issues
@@ -90,6 +90,7 @@ Need to optimise 3D visuals for performance
 Audio files are large — store paths, not raw files, in MongoDB
 
 Syncing audio data smoothly with 3D visuals
+
 
 EXPERIMENTS
 
@@ -102,6 +103,7 @@ Tried 2D animated textures
 Built early Express routes for uploads + room saving
 
 UI experiments with custom CSS before switching to Bootstrap
+
 
 LEARNING POINTS
 
