@@ -4,11 +4,17 @@ Soniq Space is a web app that transforms your audio file into an inviting immers
 The core purpose is to create a personalised audio-reactive room where colours, shapes, particles, and lighting respond in real time to sound. Users can upload audio, customise visuals, and save unique rooms to revisit in a scrollable gallery.
 
 FEATURES
+
 1.Audio-reactive 3D room using Web Audio API + Three.js
+
 2.Custom colours, shapes, particles, and branding
+
 3.Upload audio files (Multer) with file data stored in MongoDB
+
 4.Loop, shuffle, and switch between uploaded tracks
+
 5.Save multiple visual rooms per user
+
 6.Secure login system (JWT)
 
 TECHNOLOGY STACK (front-end)
@@ -34,13 +40,16 @@ ARCHITECTURE FLOW
 5.Local/Cloud Storage (audio + logos)
 
 Frontend and backend are developed separately for safety, clarity, and iterative testing.
+
 UI / UX Considerations
+
 -Simple Bootstrap layout for uploads and settings
 -Clean panel for colours, shapes, particles, branding
 -Fullscreen interactive 3D room
 -Scroll-to-view gallery for saved rooms
 
 MVP Features
+
 -User login/register
 -Audio upload + storage
 -Audio-reactive 3D environment
@@ -49,12 +58,14 @@ MVP Features
 -Loop and shuffle audio
 
 CHALLENGES
+
 -Large GLB models caused loading issues
 -Need to optimise 3D visuals for performance
 -Audio files are large, store paths, not raw files in MongoDB
 -Syncing audio data smoothly with 3D visuals
 
 EXPERIMENTS
+
 -Tested Web Audio API for frequency and amplitude analysis
 -Loaded GLB models from Blender (learned file-size limits)
 -Tried 2D animated textures
