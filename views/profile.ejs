@@ -1,0 +1,13 @@
+<h1>Your Profile</h1>
+
+<form method="POST" action="/profile">
+    <label>First name:</label>
+    <input name="firstname" value="<%= user.firstname %>" required>
+
+    <label>Last name:</label>
+    <input name="lastname" value="<%= user.lastname %>" required>
+
+    <button type="submit">Save Changes</button>
+</form>
+
+<a href="/app">Back</a>

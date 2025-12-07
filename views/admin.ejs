@@ -1,0 +1,30 @@
+<h1>Admin Dashboard</h1>
+
+<h2>Users</h2>
+<ul>
+<% users.forEach(user => { %>
+    <li>
+        <%= user.username %> —
+        <%= user.firstname %> <%= user.lastname %>
+
+        <form method="POST" action="/admin/deleteuser/<%= user._id %>">
+            <button type="submit">Delete</button>
+        </form>
+    </li>
+<% }) %>
+</ul>
+
+<h2>Posts</h2>
+<ul>
+<% posts.forEach(post => { %>
+    <li>
+        <%= post.message %> (by <%= post.username %>)
+
+        <form method="POST" action="/admin/deletepost/<%= post._id %>">
+            <button type="submit">Delete</button>
+        </form>
+    </li>
+<% }) %>
+</ul>
+
+<a href="/app">Back</a>

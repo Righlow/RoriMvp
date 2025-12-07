@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register – Soniq Space</title>
+
+    <!-- FONT -->
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: "League Spartan", sans-serif;
+            background: #1d1d1d;
+            color: white;
+        }
+
+        /* ───────────────────────────────
+           VIDEO BACKGROUND
+        ─────────────────────────────── */
+        #bgVideo {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 100vw;
+            height: auto;
+            transform: translate(-50%, -50%);
+            opacity: 0.25;
+            z-index: -2;
+        }
+
+        /* DARK OVERLAY */
+        #overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: -1;
+        }
+
+        /* ───────────────────────────────
+           REGISTRATION CARD
+        ─────────────────────────────── */
+        .panel {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 440px;
+            padding: 40px;
+            background: #FFE55C;
+            border-radius: 22px;
+            box-shadow: 15px 15px 0px #000;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 52px;
+            color: #FF3E6C;
+            margin-bottom: 10px;
+            text-shadow: 5px 5px #000;
+        }
+
+        p {
+            font-weight: 700;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px;
+            margin-bottom: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        button {
+            width: 65%;
+            padding: 14px;
+            margin-top: 5px;
+            font-size: 20px;
+            background: #FF3E6C;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 6px 6px #000;
+            font-weight: 800;
+        }
+
+        button:hover {
+            transform: translate(2px, 2px);
+            box-shadow: 4px 4px #000;
+        }
+
+        /* LINK TO LOGIN */
+        .toLogin {
+            margin-top: 10px;
+            display: block;
+            color: #fff;
+            font-weight: 700;
+            text-decoration: underline;
+        }
+
+        /* ───────────────────────────────
+           GRAFFITI TITLE CANVAS
+        ─────────────────────────────── */
+        #titleCanvas {
+            position: absolute;
+            top: 8%;
+            width: 100%;
+            height: 200px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- VIDEO BACKGROUND -->
+<video id="bgVideo" autoplay muted loop>
+    <source src="/video/graffiti.mp4" type="video/mp4">
+</video>
+<div id="overlay"></div>
+
+<!-- GRAFFITI TITLE (P5.js) -->
+<canvas id="titleCanvas"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+<script>
+let fontSize = 110;
+
+function setup() {
+    let c = createCanvas(window.innerWidth, 220);
+    c.parent("titleCanvas");
+    textFont("League Spartan");
+    textAlign(CENTER, CENTER);
+}
+
+function draw() {
+    clear();
+
+    // Glow effect
+    fill(255, 62, 108, 200);
+    textSize(fontSize + 4);
+    text("SONIQ SPACE", width / 2, 110);
+
+    // Highlight layer
+    fill(255, 255, 255, 90);
+    textSize(fontSize - 10);
+    text("SONIQ SPACE", width / 2 - 3, 107);
+
+    // Main fill
+    fill("#FFE55C");
+    textSize(fontSize);
+    text("SONIQ SPACE", width / 2, 110);
+}
+
+function windowResized() {
+    resizeCanvas(window.innerWidth, 220);
+}
+</script>
+
+<!-- REGISTRATION PANEL -->
+<div class="panel">
+
+    <h1>Register</h1>
+    <p>Create your Soniq Space account</p>
+
+    <form action="/register" method="POST">
+        <input type="text" name="username" placeholder="Choose a Username" required>
+        <input type="password" name="password" placeholder="Choose a Password" required>
+        <input type="text" name="firstname" placeholder="First Name" required>
+        <input type="text" name="lastname" placeholder="Last Name" required>
+
+        <input type="text" name="adminCode" placeholder="Admin Code (optional)">
+
+        <button type="submit">Create Account</button>
+    </form>
+
+    <a class="toLogin" href="/login">Already have an account? Log in</a>
+</div>
+
+</body>
+</html>

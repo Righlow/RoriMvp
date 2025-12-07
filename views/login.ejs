@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SONIQ SPACE</title>
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@700;900&display=swap" rel="stylesheet">
+
+    <!-- P5.JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #2047FF;
+            font-family: "League Spartan", sans-serif;
+        }
+
+        /* LOGIN PANEL */
+        .panel {
+            position: absolute;
+            top: 65%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 430px;
+            background: #FFE55C;
+            padding: 42px;
+            border-radius: 22px;
+            box-shadow: 18px 18px 0px #000;
+            z-index: 10;
+            text-align: center;
+        }
+
+        /* SONIQ logo */
+        #soniqLogo {
+            width: 80px;
+            margin-bottom: 12px;
+            animation: pulse 4s ease-in-out infinite;
+            filter: drop-shadow(0 0 6px rgba(255,255,255,0.55));
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.07); }
+            100% { transform: scale(1); }
+        }
+
+        h1 {
+            font-size: 55px;
+            margin: 0 0 5px 0;
+            color: #FF3E6C;
+            font-weight: 900;
+            text-shadow: 6px 6px #000;
+        }
+
+        p {
+            font-size: 14px;
+            margin-bottom: 22px;
+            font-weight: 700;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 12px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        button {
+            width: 60%;
+            padding: 14px;
+            font-size: 20px;
+            background: #FF3E6C;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 800;
+            box-shadow: 6px 6px #000;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- BACKGROUND GRAFFITI ANIMATION -->
+<script>
+let drips = [];
+let sprayDots = [];
+let sprayColors;
+let textCenter;
+let textSizeVal;
+let baseY;
+let textWidthVal;
+
+function setup() {
+    createCanvas(window.innerWidth, window.innerHeight);
+    noStroke();
+
+    // Updated brand colors including blue tint
+    sprayColors = [
+        color(255, 62, 108, 200),   // pink
+        color(255, 229, 92, 200),   // yellow
+        color(255, 255, 255, 180),  // white
+        color(90, 140, 255, 190)    // blue tint
+    ];
+
+    background("#2047FF");
+
+    textFont("League Spartan");
+    textAlign(CENTER, CENTER);
+
+    // Scaling text size
+    textSizeVal = (width > 800) ? 140 : 90;
+    textSize(textSizeVal);
+
+    textCenter = createVector(width / 2, height / 2 - 170);
+    textWidthVal = textWidth("SONIQ SPACE");
+    baseY = textCenter.y + textSizeVal * 0.35;
+
+    // Spray dots around graffiti text
+    for (let i = 0; i < 450; i++) {
+        let rx = random(textCenter.x - textWidthVal * 0.6, textCenter.x + textWidthVal * 0.6);
+        let ry = random(textCenter.y - textSizeVal * 0.8, textCenter.y + textSizeVal * 0.3);
+        let col = random(sprayColors);
+        let r = random(2, 12);
+        sprayDots.push({ x: rx, y: ry, r, col });
+    }
+
+    // Initial drips
+    for (let i = 0; i < 25; i++) {
+        drips.push(new Drip(
+            random(textCenter.x - textWidthVal * 0.45, textCenter.x + textWidthVal * 0.45),
+            baseY + random(-10, 10),
+            random(sprayColors)
+        ));
+    }
+}
+
+function draw() {
+    background("#2047FF");
+
+    let mouseBoost = map(dist(mouseX, mouseY, pmouseX, pmouseY), 0, 40, 1, 3);
+
+    // Spray dots with subtle mouse-reactive jitter
+    for (let d of sprayDots) {
+        fill(d.col);
+        ellipse(
+            d.x + random(-1, 1) * mouseBoost,
+            d.y + random(-1, 1) * mouseBoost,
+            d.r
+        );
+    }
+
+    drawGraffitiText();
+
+    // Drips (gravity, wobble, shine)
+    for (let drip of drips) {
+        drip.update(mouseBoost);
+        drip.display();
+    }
+
+    drips = drips.filter(d => !d.dead);
+
+    // Add new random drips
+    if (frameCount % 15 === 0 && drips.length < 70) {
+        drips.push(new Drip(
+            random(textCenter.x - textWidthVal * 0.45, textCenter.x + textWidthVal * 0.45),
+            baseY + random(-5, 5),
+            random(sprayColors)
+        ));
+    }
+}
+
+// Draw graffiti text layers
+function drawGraffitiText() {
+    fill(0, 0, 0, 230);
+    text("SONIQ SPACE", textCenter.x + 6, textCenter.y + 6);
+
+    fill(255, 62, 108);
+    text("SONIQ SPACE", textCenter.x, textCenter.y);
+
+    fill(255, 255, 255, 70);
+    text("SONIQ SPACE", textCenter.x - 3, textCenter.y - 3);
+}
+
+/* ------------------------------------------
+   REALISTIC GRAFFITI DRIP CLASS
+---------------------------------------------*/
+class Drip {
+    constructor(x, y, col) {
+        this.x = x;
+        this.y = y;
+        this.startY = y;
+
+        this.col = col;
+
+        this.headSize = random(10, 25);
+        this.length = random(60, 150);
+
+        this.speed = 0;
+        this.gravity = random(0.12, 0.25);
+
+        this.wobbleAmount = random(0.3, 1.2);
+        this.wobbleSpeed = random(0.02, 0.06);
+
+        this.thickness = random(4, 11);
+
+        this.alpha = 255;
+        this.dead = false;
+
+        this.shineOffset = random(2, 5);
+    }
+
+    update(boost) {
+        this.speed += this.gravity * boost;
+        this.y += this.speed;
+
+        this.thickness += 0.03;
+        this.alpha -= 1.0;
+
+        if (this.alpha <= 0 || this.y > height + this.length) {
+            this.dead = true;
+        }
+    }
+
+    display() {
+        let dripHeight = this.y - this.startY;
+        let wobbleX = this.x + sin(frameCount * this.wobbleSpeed) * this.wobbleAmount;
+
+        fill(red(this.col), green(this.col), blue(this.col), this.alpha);
+        ellipse(this.x, this.startY, this.headSize, this.headSize * 0.8);
+
+        noStroke();
+        rect(wobbleX, this.startY, this.thickness, dripHeight, this.thickness * 0.5);
+
+        fill(255, 255, 255, this.alpha * 0.25);
+        rect(
+            wobbleX + this.shineOffset,
+            this.startY,
+            this.thickness * 0.25,
+            dripHeight,
+            10
+        );
+
+        if (random() < 0.0025) {
+            ellipse(
+                wobbleX + random(-3, 3),
+                this.y + random(5, 15),
+                random(8, 16),
+                random(10, 18)
+            );
+        }
+    }
+}
+
+function windowResized() {
+    resizeCanvas(window.innerWidth, window.innerHeight);
+    setup();
+}
+</script>
+
+<!-- LOGIN PANEL -->
+<div class="panel">
+
+    <!-- Logo -->
+    <svg id="soniqLogo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="45" stroke="white" stroke-width="8" fill="none"/>
+        <path d="M35 30 C20 50, 20 50, 35 70 
+                C45 85, 55 85, 65 70 
+                C80 50, 80 50, 65 30 
+                C55 15, 45 15, 35 30Z"
+              fill="white"/>
+    </svg>
+
+    <h1>SONIQ SPACE</h1>
+    <p>KEEP YOUR EARS ON THE ECHO.</p>
+
+    <form action="/login" method="POST">
+        <input name="username" type="text" placeholder="Username" required>
+        <input name="password" type="password" placeholder="Password" required>
+        <button type="submit">Log In</button>
+    </form>
+</div>
+
+</body>
+</html>

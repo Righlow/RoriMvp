@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EchoSpace Visualiser</title>
+
+  <style>
+    :root {
+      --blue-bg: #264cff;
+      --card-yellow: #ffe94a;
+      --accent-red: #ff4f5e;
+      --neon-yellow: #d9ff3f;
+      --text-dark: #111111;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      height: 100vh;
+      overflow: hidden;
+      background: var(--blue-bg);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    }
+
+    #ui-layer {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      pointer-events: none;
+      transition: padding 0.3s ease, transform 0.3s ease;
+    }
+
+    .card {
+      background: var(--card-yellow);
+      pointer-events: auto;
+      padding: 40px 56px;
+      border-radius: 32px;
+      border: 6px solid #000;
+      text-align: center;
+      max-width: 420px;
+      color: var(--text-dark);
+      box-shadow: 16px 16px 0 #000;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card-title {
+      font-size: 3.4rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: var(--accent-red);
+      text-shadow: 0 4px 0 #000;
+      margin-bottom: 18px;
+    }
+
+    .card-sub {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 30px;
+    }
+
+    .card-button {
+      padding: 14px 36px;
+      background: var(--accent-red);
+      color: #ffe9b0;
+      border-radius: 10px;
+      border: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 6px 6px 0 #000;
+      transition: 0.12s ease;
+    }
+
+    .card-button:hover {
+      transform: translate(2px, 2px);
+      box-shadow: 3px 3px 0 #000;
+      background: #ff6a7a;
+    }
+
+    .file-label {
+      margin-top: 16px;
+      font-size: 0.8rem;
+      text-decoration: underline;
+      cursor: pointer;
+      display: block;
+    }
+
+    input[type="file"] { display: none; }
+
+    #visualiser { flex: 1; cursor: pointer; }
+    #hint { margin-top: 10px; font-size: 0.75rem; opacity: 0.8; }
+
+    /* When music starts: banner shrinks to top-left */
+    body.started #ui-layer {
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 20px 0 0 20px;
+    }
+
+    body.started .card {
+      transform-origin: top left;
+      transform: scale(0.7);
+      box-shadow: 10px 10px 0 #000;
+    }
+
+    @media (max-width: 700px) {
+      .card {
+        padding: 28px 32px;
+        border-radius: 24px;
+      }
+      .card-title { font-size: 2.6rem; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Three.js core + extras (matching r128) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/js/loaders/FontLoader.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/js/geometries/TextGeometry.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.3.0/simplex-noise.min.js"></script>
+
+  <!-- UI overlay -->
+  <div id="ui-layer">
+    <div class="card">
+      <div class="card-title">SONIQ SPACE</div>
+      <div class="card-sub">KEEP YOUR EARS ON THE ECHO.</div>
+
+      <button class="card-button" id="get-started">Get Started</button>
+
+      <label for="audio" class="file-label">Upload your track (.mp3)</label>
+      <input type="file" id="audio" accept=".mp3" />
+
+      <div id="hint">After uploading, click anywhere to play / pause.</div>
+    </div>
+  </div>
+
+  <div id="visualiser"></div>
+
+  <script>
+    const audioInput = document.getElementById("audio");
+    const visualiserEl = document.getElementById("visualiser");
+    const getStartedBtn = document.getElementById("get-started");
+
+    let audio, audioContext, analyser, dataArray;
+    let scene, camera, renderer;
+    let wavePoints, wavePositions;
+    let tube;
+    let textMesh;
+    let depthPoints, depthPositions, depthBasePositions;
+    let room;
+    let textScaleTarget = 0;
+    let hasStarted = false;
+
+    // RTT + refraction
+    let rttCamera, renderTarget;
+    let cubeRenderTarget, cubeCamera, refractSphere;
+
+    const noise = new SimplexNoise();
+
+    getStartedBtn.addEventListener("click", () => audioInput.click());
+    audioInput.addEventListener("change", handleAudioFile);
+
+    function handleAudioFile() {
+      const file = audioInput.files[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith(".mp3")) {
+        alert("Please select an .mp3 file.");
+        return;
+      }
+
+      if (audio) audio.pause();
+
+      audio = new Audio(URL.createObjectURL(file));
+      audio.loop = true;
+
+      startVisualiser();
+    }
+
+    visualiserEl.addEventListener("click", () => {
+      if (!audio) return;
+
+      if (audio.paused) {
+        audio.play();
+        if (audioContext && audioContext.state === "suspended") audioContext.resume();
+        textScaleTarget = 1;
+
+        if (!hasStarted) {
+          document.body.classList.add("started");
+          hasStarted = true;
+        }
+      } else {
+        audio.pause();
+        textScaleTarget = 0;
+      }
+    });
+
+
+
+    
+    function startVisualiser() {
+      // --- Audio setup ---
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const src = audioContext.createMediaElementSource(audio);
+      analyser = audioContext.createAnalyser();
+      src.connect(analyser);
+      analyser.connect(audioContext.destination);
+      analyser.fftSize = 512;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      // --- Scene setup ---
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x264cff);
+
+      camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(0, 50, 160);
+
+      // Second camera for RTT view
+      rttCamera = camera.clone();
+      rttCamera.position.set(0, 80, 190);
+      rttCamera.lookAt(0, 25, 0);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio || 1);
+      visualiserEl.innerHTML = "";
+      visualiserEl.appendChild(renderer.domElement);
+
+      // Room box
+      const roomGeo = new THREE.BoxGeometry(260, 140, 260);
+      const roomMat = new THREE.MeshStandardMaterial({
+        color: 0x1827b8,
+        side: THREE.BackSide,
+        metalness: 0.4,
+        roughness: 0.6
+      });
+      room = new THREE.Mesh(roomGeo, roomMat);
+      scene.add(room);
+
+      // Lights
+      const ambient = new THREE.AmbientLight(0xffffff, 0.35);
+      scene.add(ambient);
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+      keyLight.position.set(60, 90, 60);
+      scene.add(keyLight);
+
+      const rimLight = new THREE.PointLight(0xff4f5e, 1.5, 400);
+      rimLight.position.set(-60, 60, -40);
+      scene.add(rimLight);
+
+      // --- RTT target & screen plane ---
+      renderTarget = new THREE.WebGLRenderTarget(
+        window.innerWidth,
+        window.innerHeight
+      );
+
+      const screenGeo = new THREE.PlaneGeometry(110, 64);
+      const screenMat = new THREE.MeshBasicMaterial({
+        map: renderTarget.texture,
+        toneMapped: false
+      });
+      const screenMesh = new THREE.Mesh(screenGeo, screenMat);
+      screenMesh.position.set(0, 30, -129);
+      screenMesh.rotation.y = Math.PI; // face into room
+      scene.add(screenMesh);
+
+      // --- Refraction sphere setup (cube camera) ---
+      cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256, {
+        format: THREE.RGBAFormat,
+        generateMipmaps: true,
+        minFilter: THREE.LinearMipmapLinearFilter
+      });
+      cubeRenderTarget.texture.mapping = THREE.CubeRefractionMapping;
+      cubeCamera = new THREE.CubeCamera(1, 1000, cubeRenderTarget);
+
+      const sphereGeo = new THREE.SphereGeometry(14, 64, 64);
+      const sphereMat = new THREE.MeshPhongMaterial({
+        color: 0xffffff,
+        envMap: cubeRenderTarget.texture,
+        refractionRatio: 0.98,
+        reflectivity: 0.9,
+        transparent: true,
+        opacity: 0.9
+      });
+      refractSphere = new THREE.Mesh(sphereGeo, sphereMat);
+      refractSphere.position.set(0, 28, 0);
+      scene.add(refractSphere);
+      scene.add(cubeCamera);
+
+      // --- Wave floor (points) ---
+      const gridX = 80;
+      const gridZ = 80;
+      const separation = 2.4;
+      const count = gridX * gridZ;
+      wavePositions = new Float32Array(count * 3);
+
+      let wi = 0;
+      for (let x = 0; x < gridX; x++) {
+        for (let z = 0; z < gridZ; z++) {
+          wavePositions[wi++] = (x - gridX / 2) * separation;
+          wavePositions[wi++] = 0;
+          wavePositions[wi++] = (z - gridZ / 2) * separation;
+        }
+      }
+
+      const waveGeometry = new THREE.BufferGeometry();
+      waveGeometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(wavePositions, 3)
+      );
+
+      const waveMaterial = new THREE.PointsMaterial({
+        size: 1.6,
+        color: 0xd9ff3f,
+        transparent: true,
+        opacity: 0.9
+      });
+
+      wavePoints = new THREE.Points(waveGeometry, waveMaterial);
+      wavePoints.position.y = -16;
+      scene.add(wavePoints);
+
+      // --- Curved neon tube ---
+      const curvePoints = [];
+      for (let j = 0; j < 20; j++) {
+        const angle = j * 0.35;
+        const radius = 28;
+        curvePoints.push(
+          new THREE.Vector3(
+            Math.cos(angle) * radius,
+            j * 2.1 - 24,
+            Math.sin(angle) * radius
+          )
+        );
+      }
+
+      const curve = new THREE.CatmullRomCurve3(curvePoints);
+      const tubeGeometry = new THREE.TubeGeometry(curve, 300, 1.7, 24, false);
+
+      const tubeMaterial = new THREE.MeshStandardMaterial({
+        color: 0xff4f6a,
+        emissive: 0xff4f6a,
+        emissiveIntensity: 1.0,
+        metalness: 0.6,
+        roughness: 0.2,
+        transparent: true,
+        opacity: 0.95
+      });
+
+      tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+      scene.add(tube);
+
+      // --- Depth “Kinect-style” point cloud ---
+      const dCols = 60;
+      const dRows = 60;
+      const dSep = 1.8;
+      const dCount = dCols * dRows;
+
+      depthBasePositions = new Float32Array(dCount * 3);
+      depthPositions = new Float32Array(dCount * 3);
+
+      let di = 0;
+      for (let x = 0; x < dCols; x++) {
+        for (let z = 0; z < dRows; z++) {
+          const bx = (x - dCols / 2) * dSep * 0.9;
+          const bz = (z - dRows / 2) * dSep * 0.9;
+          const by = 10;
+
+          depthBasePositions[di] = bx;
+          depthBasePositions[di + 1] = by;
+          depthBasePositions[di + 2] = bz;
+
+          depthPositions[di] = bx;
+          depthPositions[di + 1] = by;
+          depthPositions[di + 2] = bz;
+
+          di += 3;
+        }
+      }
+
+      const depthGeometry = new THREE.BufferGeometry();
+      depthGeometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(depthPositions, 3)
+      );
+
+      const depthMaterial = new THREE.PointsMaterial({
+        size: 1.4,
+        color: 0xfff7a0,
+        transparent: true,
+        opacity: 0.85
+      });
+
+      depthPoints = new THREE.Points(depthGeometry, depthMaterial);
+      scene.add(depthPoints);
+
+      // --- 3D Text: WELCOME SONIQ SPACE ---
+      const loader = new THREE.FontLoader();
+      loader.load(
+        "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+        (font) => {
+          const textGeo = new THREE.TextGeometry("WELCOME TO SONIQ SPACE", {
+            font: font,
+            size: 8,
+            height: 2,
+            curveSegments: 8,
+            bevelEnabled: true,
+            bevelThickness: 0.6,
+            bevelSize: 0.4,
+            bevelSegments: 4
+          });
+
+          textGeo.computeBoundingBox();
+          const bbox = textGeo.boundingBox;
+          const textWidth = bbox.max.x - bbox.min.x;
+          textGeo.translate(-textWidth / 2, 36, 0); // raised higher
+
+          const textMaterial = new THREE.MeshStandardMaterial({
+            color: 0xd9ff3f,
+            emissive: 0xd9ff3f,
+            emissiveIntensity: 1.0,
+            metalness: 0.3,
+            roughness: 0.25
+          });
+
+          textMesh = new THREE.Mesh(textGeo, textMaterial);
+          textMesh.scale.set(0.01, 0.01, 0.01);
+          textMesh.rotation.y = Math.PI; // face main camera
+          scene.add(textMesh);
+        }
+      );
+
+      window.addEventListener("resize", onWindowResize);
+      animate();
+    }
+
+    function onWindowResize() {
+      if (!camera || !renderer) return;
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+
+      if (rttCamera) {
+        rttCamera.aspect = window.innerWidth / window.innerHeight;
+        rttCamera.updateProjectionMatrix();
+      }
+
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if (renderTarget) {
+        renderTarget.setSize(window.innerWidth, window.innerHeight);
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (!analyser || !scene || !camera || !renderer) {
+        if (renderer && scene && camera) renderer.render(scene, camera);
+        return;
+      }
+
+      analyser.getByteFrequencyData(dataArray);
+
+      const len = dataArray.length;
+      const bass = avg(dataArray.slice(0, len / 3)) / 255;
+      const mid = avg(dataArray.slice(len / 3, (len * 2) / 3)) / 255;
+      const treble = avg(dataArray.slice((len * 2) / 3)) / 255;
+
+      const time = performance.now() * 0.0007;
+
+      // camera orbit in room
+      const camRadius = 150 + mid * 40;
+      camera.position.x = Math.cos(time * 0.55) * camRadius;
+      camera.position.z = Math.sin(time * 0.55) * camRadius;
+      camera.position.y = 55 + bass * 40;
+      camera.lookAt(0, 26, 0);
+
+      if (rttCamera) {
+        rttCamera.position.x = Math.cos(time * 0.4 + Math.PI / 3) * (camRadius - 20);
+        rttCamera.position.z = Math.sin(time * 0.4 + Math.PI / 3) * (camRadius - 20);
+        rttCamera.position.y = 70 + mid * 30;
+        rttCamera.lookAt(0, 30, 0);
+      }
+
+      // wave floor
+      if (wavePoints) {
+        const pos = wavePoints.geometry.attributes.position.array;
+        let idx = 0;
+        for (let x = 0; x < 80; x++) {
+          for (let z = 0; z < 80; z++) {
+            const n = noise.noise3D(x / 12, z / 12, time * 2.0);
+            pos[idx + 1] = n * (6 + bass * 45);
+            idx += 3;
+          }
+        }
+        wavePoints.geometry.attributes.position.needsUpdate = true;
+      }
+
+      // tube
+      if (tube) {
+        tube.rotation.y += 0.004 + treble * 0.03;
+        const s = 1 + mid * 0.25;
+        tube.scale.set(s, 1 + bass * 0.3, s);
+      }
+
+      // depth cloud
+      if (depthPoints && depthBasePositions) {
+        const pos = depthPoints.geometry.attributes.position.array;
+        for (let i = 0; i < pos.length; i += 3) {
+          const bx = depthBasePositions[i];
+          const by = depthBasePositions[i + 1];
+          const bz = depthBasePositions[i + 2];
+
+          const n = noise.noise3D(bx * 0.08, bz * 0.08, time * 1.4);
+          const lift = n * (12 + treble * 60);
+
+          pos[i] = bx + Math.cos(time * 1.2 + bz * 0.2) * (4 + mid * 10);
+          pos[i + 1] = by + lift + bass * 10;
+          pos[i + 2] = bz + Math.sin(time * 1.1 + bx * 0.2) * (6 + mid * 14);
+        }
+        depthPoints.geometry.attributes.position.needsUpdate = true;
+      }
+
+      // 3D text
+      if (textMesh) {
+        const currentScale = textMesh.scale.x;
+        const target = textScaleTarget * (1 + bass * 0.35);
+        const next = THREE.MathUtils.lerp(currentScale, target, 0.08);
+        textMesh.scale.set(next, next, next);
+        textMesh.rotation.y += 0.004 + treble * 0.03;
+        textMesh.position.y = 36 + bass * 12;
+      }
+
+      // refraction env update
+      if (refractSphere && cubeCamera) {
+        refractSphere.visible = false;
+        cubeCamera.position.copy(refractSphere.position);
+        cubeCamera.update(renderer, scene);
+        refractSphere.visible = true;
+      }
+
+      // RTT render for the wall screen
+      if (renderTarget && rttCamera) {
+        renderer.setRenderTarget(renderTarget);
+        renderer.render(scene, rttCamera);
+        renderer.setRenderTarget(null);
+      }
+
+      // final render
+      renderer.render(scene, camera);
+    }
+
+    function avg(arr) {
+      if (!arr.length) return 0;
+      let sum = 0;
+      for (let i = 0; i < arr.length; i++) sum += arr[i];
+      return sum / arr.length;
+    }
+  </script>
+</body>
+</html>
