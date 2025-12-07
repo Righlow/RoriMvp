@@ -39,12 +39,19 @@ MongoDB + Mongoose
 JWT Authentication
 
 ARCHITECTURE FLOW
+
 React + R3F (3D visuals)
+
       ↓
+      
 Express API (auth, uploads, room data)
+
       ↓
+      
 MongoDB (users, audio files, room settings)
+
       ↓
+      
 Local/Cloud Storage (audio + logos)
 
 
@@ -107,10 +114,4 @@ Bootstrap speeds up reliable UI building
 Audio storage requires careful planning
 
 Mapping audio data to visuals requires experimentation
-
-If you want, I can also generate:
-✔ A folder structure section
-✔ Installation & setup instructions
-✔ A preview image layout
-✔ A contribution/license section
 
