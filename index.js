@@ -30,15 +30,15 @@ app.use(cookieParser())
 
 
 
-// 🔥 SERVE UPLOADS
+// Serve uploads
 
 
 app.use('/models', express.static(path.join(__dirname, 'models')));
 
 
-// -------------------------
-// 🔥 MULTER SETUP
-// -------------------------
+
+// mutler setup
+
 const multer = require("multer");
 
 const storage = multer.diskStorage({
@@ -51,7 +51,7 @@ const upload = multer({ storage });
 
 
 // -------------------------
-// 🔥 MONGODB SETUP
+// mongoDB intergration
 // -------------------------
 const dotenv = require('dotenv').config()
 const mongoose = require('mongoose')
@@ -86,9 +86,9 @@ function checkAdmin(req, res, next) {
 }
 
 
-// ----------------------
+
 // ROUTES
-// ----------------------
+
 
 app.get('/', (req, res) => {
     res.render('welcome')   // 👈 new landing page
@@ -99,7 +99,7 @@ app.get('/app', checkLoggedIn, (req, res) => {
     res.render('app', { username: req.session.username })
 })
 
-// POSTS API
+// post API
 app.get('/getposts', async (req, res) => {
     res.json({ posts: await posts.getLastNPosts() })
 })
@@ -109,7 +109,7 @@ app.post('/newpost', checkLoggedIn, async (req, res) => {
     res.redirect('/app')
 })
 
-// PROFILE
+// profile
 app.get('/profile', checkLoggedIn, async (req, res) => {
     const user = await userModel.getUser(req.session.username)
     res.render('profile', { user })
@@ -125,7 +125,7 @@ app.post('/profile', checkLoggedIn, async (req, res) => {
 })
 
 
-// LOGIN
+// Login
 app.get('/login', (req, res) => {
     res.render('login')
 })
@@ -145,7 +145,7 @@ app.post('/login', async (req, res) => {
 })
 
 
-// REGISTER
+// Register
 app.get('/register', (req, res) => {
     res.render('register')
 })
@@ -166,7 +166,7 @@ app.post('/register', async (req, res) => {
 })
 
 
-// ADMIN LOGIN
+// Admin login
 app.get('/admin-login', (req, res) => {
     res.render('admin_login')
 })
@@ -188,7 +188,7 @@ app.post('/admin-login', async (req, res) => {
 })
 
 
-// ADMIN DASHBOARD
+// admin dashboard
 app.get('/admin', checkAdmin, async (req, res) => {
     const users = await userModel.getAllUsers()
     const allPosts = await posts.getAllPosts()
@@ -226,9 +226,8 @@ app.post('/logout', (req, res) => {
 })
 
 
-// ----------------------------------------------------
-// 🔥 AUDIO UPLOAD + VISUALIZER ROUTES
-// ----------------------------------------------------
+
+// upload and visualiser
 
 app.get('/upload', checkLoggedIn, (req, res) => {
     res.render('upload');
