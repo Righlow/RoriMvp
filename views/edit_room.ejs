@@ -1,0 +1,25 @@
+<h1>Edit Visual Settings for <%= room.roomName %></h1>
+
+<form action="/room/<%= room._id %>/edit" method="POST">
+    
+    <label>Camera Radius</label>
+    <input type="range" name="camRadius" min="80" max="250"
+        value="<%= room.visuals.camRadius %>" step="1"/>
+
+    <label>Camera Speed</label>
+    <input type="range" name="camSpeed" min="0.2" max="1.0"
+        value="<%= room.visuals.camSpeed %>" step="0.01"/>
+
+    <label>Wave Intensity</label>
+    <input type="range" name="waveIntensity" min="0" max="2"
+        value="<%= room.visuals.waveIntensity %>" step="0.01"/>
+
+    <label>Tube Spin Speed</label>
+    <input type="range" name="tubeSpin" min="0" max="0.02"
+        value="<%= room.visuals.tubeSpin %>" step="0.001"/>
+
+    <label>Theme Colour</label>
+    <input type="color" name="colorTheme" value="<%= room.visuals.colorTheme %>"/>
+
+    <button type="submit">Save Changes</button>
+</form>

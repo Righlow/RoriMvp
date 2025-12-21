@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Room</title>
+
+  <style>
+    body { margin:0; padding:0; display:flex; height:100vh; background:#264cff; overflow:hidden; }
+
+    /* Left visualiser panel */
+    #visualiser {
+        flex: 1;
+        height: 100%;
+        cursor:pointer;
+    }
+
+    /* RIGHT SIDE: SETTINGS PANEL */
+    .card {
+        width: 420px;
+        background: #ffe94a;
+        padding: 30px;
+        border-radius: 20px;
+        border: 5px solid #000;
+        box-shadow: 10px 10px 0 #000;
+        color: #000;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    label { display:block; margin-top:20px; font-weight:bold; }
+    input[type="range"], input[type="text"], input[type="color"] { width: 100%; }
+    input[type="text"] { padding:10px; border-radius:8px; border:2px solid #000; }
+
+    button {
+        width:100%; padding:15px; margin-top:25px;
+        font-size:1.2rem; background:#ff4f6a;
+        border:3px solid #000; color:white; border-radius:10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- LEFT: LIVE 3D VISUALISER -->
+<div id="visualiser"></div>
+
+<!-- RIGHT: CREATE FORM -->
+<div class="card">
+    <h1>Create Room</h1>
+
+    <form action="/create_room" method="POST">
+
+        <label>Room Name</label>
+        <input type="text" name="roomName" required>
+        <label>Brand Text (Displayed in 3D)</label>
+        <input type="text" name="brandText" placeholder="WELCOME TO SONIQ SPACE" />
+
+
+        <label>Camera Radius</label>
+        <input id="camRadius" type="range" name="camRadius" min="50" max="300" value="150">
+
+        <label>Camera Speed</label>
+        <input id="camSpeed" type="range" name="camSpeed" min="0.1" max="2" step="0.01" value="0.55">
+
+        <label>Wave Intensity</label>
+        <input id="waveIntensity" type="range" name="waveIntensity" min="0.1" max="3" step="0.1" value="1">
+
+        <label>Tube Spin</label>
+        <input id="tubeSpin" type="range" name="tubeSpin" min="0.001" max="0.05" step="0.001" value="0.004">
+
+        <label>Color Theme</label>
+        <input id="colorTheme" type="color" name="colorTheme" value="#ff4f6a">
+
+        <button type="submit">Create Room</button>
+    </form>
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.3.0/simplex-noise.min.js"></script>
+
+<script>
+/* ------------------------------
+    LIVE SETTINGS PARAMS
+--------------------------------*/
+let params = {
+    camRadius: 150,
+    camSpeed: 0.55,
+    waveIntensity: 1,
+    tubeSpin: 0.004,
+    colorTheme: "#ff4f6a"
+};
+
+/* Link sliders → update params live */
+document.getElementById("camRadius").oninput = e => params.camRadius = Number(e.target.value);
+document.getElementById("camSpeed").oninput = e => params.camSpeed = Number(e.target.value);
+document.getElementById("waveIntensity").oninput = e => params.waveIntensity = Number(e.target.value);
+document.getElementById("tubeSpin").oninput = e => params.tubeSpin = Number(e.target.value);
+document.getElementById("colorTheme").oninput = e => params.colorTheme = e.target.value;
+
+/* 
+    THREE.JS visualiser preview
+*/
+let scene, camera, renderer, wavePoints, wavePositions;
+let noise = new SimplexNoise();
+const visualiserEl = document.getElementById("visualiser");
+
+// Start preview
+init();
+
+function init() {
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(
+        60, 
+        visualiserEl.clientWidth / window.innerHeight, 
+        1, 1000
+    );
+    camera.position.y = 55;
+
+    renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setSize(visualiserEl.clientWidth, window.innerHeight);
+    visualiserEl.appendChild(renderer.domElement);
+
+    // Wave Floor
+    const gridX = 80, gridZ = 80, spacing = 2.4;
+    wavePositions = new Float32Array(gridX * gridZ * 3);
+
+    let i=0;
+    for (let x=0;x<gridX;x++){
+        for (let z=0;z<gridZ;z++){
+            wavePositions[i++] = (x - gridX/2)*spacing;
+            wavePositions[i++] = 0;
+            wavePositions[i++] = (z - gridZ/2)*spacing;
+        }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(wavePositions, 3));
+
+    wavePoints = new THREE.Points(
+        geo,
+        new THREE.PointsMaterial({ size:1.8, color: params.colorTheme })
+    );
+    wavePoints.position.y = -16;
+    scene.add(wavePoints);
+
+    animate();
+}
+
+function animate(){
+    requestAnimationFrame(animate);
+
+    const t = performance.now() * 0.0007;
+
+    // Camera ring movement
+    camera.position.x = Math.cos(t * params.camSpeed) * params.camRadius;
+    camera.position.z = Math.sin(t * params.camSpeed) * params.camRadius;
+    camera.lookAt(0,26,0);
+
+    // Wave movement
+    const pos = wavePoints.geometry.attributes.position.array;
+    let i = 0;
+
+    for (let x=0; x<80; x++){
+        for (let z=0; z<80; z++){
+            const n = noise.noise3D(x/12, z/12, t*2);
+            pos[i+1] = n * (6 + params.waveIntensity * 20);
+            i += 3;
+        }
+    }
+
+    wavePoints.geometry.attributes.position.needsUpdate = true;
+
+    // LIVE UPDATE COLOR
+    wavePoints.material.color.set(params.colorTheme);
+
+    renderer.render(scene, camera);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Room Created – Soniq Space</title>
+
+  <style>
+    body {
+      margin:0;
+      background:#264cff;
+      overflow:hidden;
+      font-family: Arial, sans-serif;
+      color:white;
+    }
+
+    #top-card {
+      position:absolute;
+      top:20px;
+      left:20px;
+      z-index:10;
+      background:#ffe94a;
+      color:#000;
+      padding:25px 35px;
+      border-radius:20px;
+      border:5px solid #000;
+      box-shadow:10px 10px 0 #000;
+      width:350px;
+    }
+
+    #top-card h1 { margin:0 0 10px 0; }
+    #visualiser { width:100vw; height:100vh; }
+    input[type="file"], input[type="text"], button {
+      margin-top:10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- Succcess panel -->
+<div id="top-card">
+    <h1>Room Created!</h1>
+    <p>Your room is ready. Upload audio and set brand text:</p>
+
+    <!-- audio upload -->
+    <input type="file" id="audioUpload" accept=".mp3">
+
+    <!-- Brand Text -->
+    <label style="margin-top:15px;">Brand Text</label>
+    <input type="text" id="brandTextInput" placeholder="Enter brand text..." />
+
+    <button id="applyBrandText">Apply Text</button>
+
+    <p style="margin-top:10px; font-size:0.8rem; opacity:0.7;">
+        Click the visual to play/pause.
+    </p>
+</div>
+
+<!-- visualiser -->
+<div id="visualiser"></div>
+
+<!-- Libraries from three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/js/loaders/FontLoader.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/js/geometries/TextGeometry.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.3.0/simplex-noise.min.js"></script>
+
+<!-- dynamicall loaded params(parameters) -->
+<script>
+  const parameters = JSON.parse(`<%- JSON.stringify(visuals || {}) %>`);
+
+  parameters.camRadius     = Number(parameters.camRadius)     || 150;
+  parameters.camSpeed      = Number(parameters.camSpeed)      || 0.55;
+  parameters = Number(parameters.waveIntensity) || 1.0;
+  parameters.tubeSpin      = Number(parameters.tubeSpin)      || 0.004;
+  parameters.colorTheme    = perameters.colorTheme || "#ff4f6a";
+</script>
+
+<script>
+/* 
+   Three.js Variables
+*/
+let scene, camera, renderer;
+let wavePoints, wavePositions;
+let textMesh = null;
+let loadedFont = null;
+const noise = new SimplexNoise();
+
+/* 
+    start visualiser (initial-init())
+-- */
+init();
+animate();
+
+function init(){
+    const container = document.getElementById("visualiser");
+
+    scene = new THREE.Scene();
+
+    camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        1, 1000
+    );
+    camera.position.y = 55;
+
+    renderer = new THREE.WebGLRenderer({ antialias:true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container.appendChild(renderer.domElement);
+
+    // Wave Grid
+    const gridX = 80, gridZ = 80, spacing = 2.4;
+    wavePositions = new Float32Array(gridX * gridZ * 3);
+
+    let i = 0;
+    for (let x = 0; x < gridX; x++){
+        for (let z = 0; z < gridZ; z++){
+            wavePositions[i++] = (x - gridX/2) * spacing;
+            wavePositions[i++] = 0;
+            wavePositions[i++] = (z - gridZ/2) * spacing;
+        }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(wavePositions, 3));
+
+    wavePoints = new THREE.Points(
+        geo,
+        new THREE.PointsMaterial({
+            size: 1.6,
+            color: parameters.colorTheme
+        })
+    );
+    wavePoints.position.y = -16;
+    scene.add(wavePoints);
+
+    /* Load Font + Default Text from three.js */
+    const loader = new THREE.FontLoader();
+    loader.load(
+        "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+        (font) => {
+            loadedFont = font;
+            create3DText("WELCOME");
+        }
+    );
+}
+
+/* 
+   Create the 3D text Brand name
+ */
+function create3DText(message){
+    if (!loadedFont) return;
+
+    if (textMesh) {
+        scene.remove(textMesh);
+        textMesh.geometry.dispose();
+        textMesh.material.dispose();
+    }
+
+    const textGeo = new THREE.TextGeometry(message, {
+        font: loadedFont,
+        size: 8,
+        height: 2,
+        bevelEnabled: true,
+        bevelThickness: 0.5,
+        bevelSize: 0.3,
+        bevelSegments: 3
+    });
+
+    textGeo.computeBoundingBox();
+    const box = textGeo.boundingBox;
+    const width = box.max.x - box.min.x;
+
+    textGeo.translate(-width / 2, 35, 0);
+
+    const mat = new THREE.MeshStandardMaterial({
+        color: parameters.colorTheme,
+        emissive: parameters.colorTheme,
+        emissiveIntensity: 1.2,
+        metalness: 0.4,
+        roughness: 0.2
+    });
+
+    textMesh = new THREE.Mesh(textGeo, mat);
+    textMesh.rotation.y = Math.PI;
+    scene.add(textMesh);
+}
+
+/* 
+   Audio set-up
+*/
+//listen for when user an uploads file
+//if sucesssfully loaded load it into an audio element
+//conecct Wed Audio API and analysed in realtime for data to be converted
+
+let audio, audioCtx, analyser, dataArray;
+
+document.getElementById("audioUpload").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!file.name.endsWith(".mp3")) return alert("Must upload .mp3");
+
+    if (audio) audio.pause();
+
+    audio = new Audio(URL.createObjectURL(file));
+    audio.loop = true;
+
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    const src = audioCtx.createMediaElementSource(audio);
+    src.connect(analyser);
+    analyser.connect(audioCtx.destination);
+
+    audio.play();
+});
+
+// clikc to play/pause
+document.getElementById("visualiser").addEventListener("click", () => {
+    if (audio) audio.paused ? audio.play() : audio.pause();
+});
+
+/* 
+   update brand text 
+*/
+document.getElementById("applyBrandText").addEventListener("click", () => {
+    const text = document.getElementById("brandTextInput").value.trim();
+    if (text.length > 0) create3DText(text);
+});
+
+//main animation loop that constantly updates scene
+//controls camera movement,animates the wave surface using noise,
+// rotates the 3D text and re-redners 
+function animate(){
+    requestAnimationFrame(animate);
+
+    const t = performance.now() * 0.0007;
+
+    // Camera motion using sine and cososine(p5.js)
+    camera.position.x = Math.cos(t * parameters.camSpeed) * parameters.camRadius;
+    camera.position.z = Math.sin(t * parameters.camSpeed) * parameters.camRadius;
+    camera.lookAt(0,26,0);
+
+    // Wave motion(loop)
+    //get a list of  pointsioned in the shape
+    
+    const pos = wavePoints.geometry.attributes.position.array;
+    //keep track of wave
+    let i = 0;
+    //goo through grid back to front
+    for (let x=0; x<80; x++){
+        for (let z=0; z<80; z++){
+            const n = noise.noise3D(x/12, z/12, t*2);
+            pos[i+1] = n * (6 + parameters.waveIntensity * 20);
+            i+=3;
+        }
+    }
+    wavePoints.geometry.attributes.position.needsUpdate = true;
+
+    // Rotate text
+    if (textMesh) textMesh.rotation.y += 0.01;
+
+    renderer.render(scene, camera);
+}
+</script>
+
+</body>
+</html>
