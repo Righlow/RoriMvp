@@ -5,12 +5,16 @@ const path = require('path')
 const posts = require('./models/posts.js')
 const userModel = require('./models/users.js')
 
+const rooms = require('./models/rooms.js');
+
+
+
 const sessions = require('express-session')
 const cookieParser = require('cookie-parser')
 
 const threeMinutes = 3 * 60 * 1000
 
-// EJS setup
+// Ejs setup
 app.set('view engine', 'ejs')
 app.set('views', path.join(__dirname, 'views'))
 
@@ -26,19 +30,19 @@ app.use(
 app.use(express.static('public'))
 app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser())
-// Serve 3D model files (future-proof)
 
 
 
-// Serve uploads
+
+//  SERVE UPLOADS
 
 
 app.use('/models', express.static(path.join(__dirname, 'models')));
 
 
 
-// mutler setup
-
+//  Mutler setup
+// 
 const multer = require("multer");
 
 const storage = multer.diskStorage({
@@ -50,9 +54,9 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 
-// -------------------------
-// mongoDB intergration
-// -------------------------
+
+// MongoDB setup
+
 const dotenv = require('dotenv').config()
 const mongoose = require('mongoose')
 
@@ -91,7 +95,7 @@ function checkAdmin(req, res, next) {
 
 
 app.get('/', (req, res) => {
-    res.render('welcome')   // 👈 new landing page
+    res.render('welcome')   //  new landing page
 })
 
 
@@ -99,7 +103,7 @@ app.get('/app', checkLoggedIn, (req, res) => {
     res.render('app', { username: req.session.username })
 })
 
-// post API
+// POSTS API
 app.get('/getposts', async (req, res) => {
     res.json({ posts: await posts.getLastNPosts() })
 })
@@ -109,7 +113,7 @@ app.post('/newpost', checkLoggedIn, async (req, res) => {
     res.redirect('/app')
 })
 
-// profile
+// PROFILE
 app.get('/profile', checkLoggedIn, async (req, res) => {
     const user = await userModel.getUser(req.session.username)
     res.render('profile', { user })
@@ -125,7 +129,7 @@ app.post('/profile', checkLoggedIn, async (req, res) => {
 })
 
 
-// Login
+// LOGIN
 app.get('/login', (req, res) => {
     res.render('login')
 })
@@ -145,7 +149,7 @@ app.post('/login', async (req, res) => {
 })
 
 
-// Register
+// REGISTER
 app.get('/register', (req, res) => {
     res.render('register')
 })
@@ -166,7 +170,7 @@ app.post('/register', async (req, res) => {
 })
 
 
-// Admin login
+// ADMIN LOGIN
 app.get('/admin-login', (req, res) => {
     res.render('admin_login')
 })
@@ -188,7 +192,7 @@ app.post('/admin-login', async (req, res) => {
 })
 
 
-// admin dashboard
+// ADMIN DASHBOARD
 app.get('/admin', checkAdmin, async (req, res) => {
     const users = await userModel.getAllUsers()
     const allPosts = await posts.getAllPosts()
@@ -227,7 +231,8 @@ app.post('/logout', (req, res) => {
 
 
 
-// upload and visualiser
+//  audio upload and visualiser
+
 
 app.get('/upload', checkLoggedIn, (req, res) => {
     res.render('upload');
@@ -240,7 +245,83 @@ app.get('/visualizer/:file', checkLoggedIn, (req, res) => {
 });
 
 
-// ----------------------------------------------------
+
+// CREATE ROOM PAGE
+app.get('/create_room', checkLoggedIn, (req, res) => {
+    res.render('create_room');
+});
+
+// CREATE ROOM (SAVE TO DB ONCE)
+app.post('/create_room', checkLoggedIn, async (req, res) => {
+
+    const visuals = {
+        camRadius: Number(req.body.camRadius),
+        camSpeed: Number(req.body.camSpeed),
+        waveIntensity: Number(req.body.waveIntensity),
+        tubeSpin: Number(req.body.tubeSpin),
+        colorTheme: req.body.colorTheme
+    };
+
+    const brandText = req.body.brandText || "WELCOME TO SONIQ SPACE";
+
+    const newRoom = await rooms.createRoom(
+        req.body.roomName,
+        req.session.username,
+        visuals,
+        brandText
+    );
+
+    res.redirect(`/created_room/${newRoom._id}`);
+});
+
+// CREATED ROOM (PREVIEW ONLY)
+app.get('/created_room/:id', checkLoggedIn, async (req, res) => {
+    const room = await rooms.getRoom(req.params.id);
+    if (!room) return res.send("Room not found");
+
+    res.render("created_room", {
+        visuals: room.visuals,
+        brandText: room.brandText,
+        roomName: room.roomName
+    });
+});
+
+app.post('/create_room', checkLoggedIn, async (req, res) => {
+
+    const visuals = {
+        camRadius: Number(req.body.camRadius),
+        camSpeed: Number(req.body.camSpeed),
+        waveIntensity: Number(req.body.waveIntensity),
+        tubeSpin: Number(req.body.tubeSpin),
+        colorTheme: req.body.colorTheme
+    };
+
+    const brandText = req.body.brandText || "WELCOME TO SONIQ SPACE";
+
+    const newRoom = await rooms.createRoom(
+        req.body.roomName,
+        req.session.username,
+        visuals,
+        brandText
+    );
+
+    res.redirect(`/created_room/${newRoom._id}`);
+});
+
+app.get('/created_room/:id', checkLoggedIn, async (req, res) => {
+    const room = await rooms.getRoom(req.params.id)
+    if (!room) return res.send("Room not found")
+
+    res.render("created_room", {
+        visuals: room.visuals || {},
+        brandText: room.brandText || "WELCOME TO SONIQ SPACE"
+    })
+})
+
+
+
+
+//
 app.listen(3000, () => {
     console.log('✅ listening on port 3000')
 })
